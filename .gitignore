@@ -1,0 +1,6 @@
+config.py
+history.json
+.DS_Store
+*.pyc
+__pycache__/
+font.woff2

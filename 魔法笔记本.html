@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+<title>魔法笔记本</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📓</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📓</text></svg>">
+<style>
+@font-face {
+  font-family: 'LXGW WenKai';
+  src: url('/font.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+/* ====== 重置 ====== */
+* { margin:0; padding:0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0a0a0a;
+  font-family: 'LXGW WenKai', 'STKaiti', cursive;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ====== 手写画布 ====== */
+#canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  z-index: 5;
+}
+
+/* ====== 手写迹淡出遮罩 ====== */
+#fade-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+#fade-overlay.show {
+  opacity: 1;
+}
+
+/* ====== 答案区域 ====== */
+#answer {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10%;
+  color: #ffffff;
+  font-family: 'LXGW WenKai', 'STKaiti', cursive;
+  font-size: clamp(22px, 4vw, 40px);
+  line-height: 1.7;
+  text-align: left;
+  word-break: break-word;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+#answer.show {
+  opacity: 1;
+}
+
+/* ====== 状态栏 ====== */
+#status-bar {
+  position: fixed;
+  bottom: 16px;
+  right: 20px;
+  z-index: 30;
+  color: rgba(255,255,255,0.2);
+  font-family: 'LXGW WenKai', 'STKaiti', cursive;
+  font-size: 12px;
+  letter-spacing: 1px;
+  pointer-events: none;
+  user-select: none;
+  text-align: right;
+  line-height: 1.5;
+}
+
+/* ====== 作者信息 ====== */
+#author-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 20px;
+  z-index: 30;
+  color: rgba(255,255,255,0.2);
+  font-family: 'LXGW WenKai', 'STKaiti', cursive;
+  font-size: 12px;
+  letter-spacing: 1px;
+  pointer-events: auto;
+  user-select: none;
+  line-height: 1.5;
+}
+#author-bar a {
+  color: rgba(255,255,255,0.35);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+#author-bar a:hover {
+  color: rgba(255,255,255,0.7);
+}
+
+/* ====== 隐藏的加载提示 ====== */
+#loading-hint { display: none; }
+
+/* ====== 加载动画 ====== */
+#loading-screen {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0a;
+  transition: opacity 0.5s ease;
+}
+#loading-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.loading-text {
+  font-size: clamp(48px, 12vw, 100px);
+  color: #ffffff;
+  animation: wandGlow 1.2s ease-in-out infinite;
+}
+
+@keyframes wandGlow {
+  0%, 100% { opacity: 0.2; transform: scale(0.85) rotate(-10deg); }
+  50% { opacity: 1; transform: scale(1.1) rotate(10deg); }
+}
+
+/* ====== 开场动画 ====== */
+#welcome {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0a;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+#welcome.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.welcome-inner {
+  max-width: 80%;
+  text-align: center;
+}
+.welcome-line {
+  color: #ffffff;
+  font-family: 'LXGW WenKai', 'STKaiti', cursive;
+  font-size: clamp(20px, 3.5vw, 36px);
+  line-height: 2;
+  opacity: 0;
+  min-height: 1.5em;
+}
+.welcome-line.visible {
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<div id="fade-overlay"><img id="fade-img" style="width:100%;height:100%;"></div>
+<div id="answer"></div>
+<div id="loading-screen">
+  <div class="loading-text">🪄</div>
+</div>
+<div id="welcome">
+  <div class="welcome-inner">
+    <div class="welcome-line" id="wl1"></div>
+    <div class="welcome-line" id="wl2"></div>
+    <div class="welcome-line" id="wl3"></div>
+  </div>
+</div>
+<div id="status-bar"></div>
+<div id="author-bar"><a href="https://xhslink.com/m/5yUbHrtz1jX" target="_blank" rel="noopener">@都是斯文人 · 📓</a></div>
+<div id="loading-hint"></div>
+
+  <!-- 不再使用 Tesseract.js（太慢），改用百度 OCR API -->
+<script>
+// ============================================================
+//  魔法笔记本 — 交互流程
+//  ============================================================
+//  使用说明：
+//  1. API 已配置（api.edgefn.net + DeepSeek-R1-0528-Qwen3-8B）
+//  2. 用 iPad Safari 打开本文件即可使用
+// ============================================================
+
+// ====== API 配置（已就绪，密钥在服务端） ======
+// ==================================================
+
+// ====== 状态机 ======
+const STATE = {
+  WRITING:   'writing',    // 用户正在写字
+  FADING:    'fading',     // 字迹消失中
+  OCR:       'ocr',        // OCR识别中
+  ANSWERING: 'answering',  // 答案流式呈现中
+  DISPLAYED: 'displayed',  // 答案展示完毕，等待清除手势
+  READY:     'ready'       // 清空完毕，准备写下一题
+};
+
+let currentState = STATE.WRITING;
+let idleTimer = null;
+const IDLE_DELAY = 1800; // 停笔后等待毫秒数
+
+// ====== Canvas 设置 ======
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const fadeOverlay = document.getElementById('fade-overlay');
+const fadeImg = document.getElementById('fade-img');
+const answerEl = document.getElementById('answer');
+const statusBar = document.getElementById('status-bar');
+
+// ====== 状态中文映射 ======
+const STATE_LABELS = {
+  'writing':   '等待书写 ✏️',
+  'fading':    '字迹消散 ✨',
+  'ocr':       'OCR识别中 🔍',
+  'answering': '大模型回答中 🤖',
+  'displayed': '答案展示中 📖',
+  'ready':     '等待书写 ✏️'
+};
+
+const APP_VERSION = 'v0.8';
+
+function updateStatus(text) {
+  if (statusBar) statusBar.textContent = text + '  |  ' + APP_VERSION;
+}
+
+// 监听状态变化
+function setState(newState) {
+  currentState = newState;
+  updateStatus(STATE_LABELS[newState] || newState);
+}
+
+let isDrawing = false;
+let lastX = 0, lastY = 0;
+
+// ====== 手势检测相关 ======
+let gesturePoints = [];
+let isGestureDetection = false;
+
+// ====== 存储当前笔迹快照 ======
+let currentStrokeData = null;
+
+// ====== 百度 OCR 配置（密钥在服务端） ======
+
+// ====== 滚动/缩放锁定 ======
+let preventScroll = false;
+let scrollTimeout = null;
+
+// ====== 尺寸 ======
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.scale(dpr, dpr);
+  
+  // 画布尺寸用 CSS 像素
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+}
+
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ====== 工具函数 ======
+function getCanvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  };
+}
+
+function clearCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+}
+
+function saveCanvasSnapshot() {
+  return canvas.toDataURL();
+}
+
+function showFadeAnimation() {
+  const dataUrl = saveCanvasSnapshot();
+  fadeImg.src = dataUrl;
+  fadeOverlay.style.opacity = '1';
+  fadeOverlay.classList.add('show');
+  clearCanvas();
+  
+  // 0.9s 后移除遮罩
+  setTimeout(() => {
+    fadeOverlay.style.opacity = '0';
+    fadeOverlay.classList.remove('show');
+  }, 900);
+}
+
+// ====== 逆时针圆圈手势检测 ======
+function detectClearGesture(points) {
+  if (points.length < 30) return false;
+  
+  // 计算中心点
+  let cx = 0, cy = 0;
+  for (const p of points) { cx += p.x; cy += p.y; }
+  cx /= points.length;
+  cy /= points.length;
+  
+  // 判断是否闭合
+  const start = points[0];
+  const end = points[points.length - 1];
+  const dist = Math.hypot(end.x - start.x, end.y - start.y);
+  
+  let radiusSum = 0;
+  for (const p of points) {
+    radiusSum += Math.hypot(p.x - cx, p.y - cy);
+  }
+  const avgRadius = radiusSum / points.length;
+  
+  // 如果起终点距离太大，不是闭合图形
+  if (dist > avgRadius * 2.0) return false;
+  
+  // 计算总角度变化（逆时针 = 负值）
+  let totalAngle = 0;
+  let prevAngle = Math.atan2(points[0].y - cy, points[0].x - cx);
+  
+  for (let i = 1; i < points.length; i++) {
+    let angle = Math.atan2(points[i].y - cy, points[i].x - cx);
+    let diff = angle - prevAngle;
+    if (diff > Math.PI) diff -= 2 * Math.PI;
+    if (diff < -Math.PI) diff += 2 * Math.PI;
+    totalAngle += diff;
+    prevAngle = angle;
+  }
+  
+  // 逆时针转了一圈多（负的，绝对值大于一圈）
+  return totalAngle < -Math.PI * 1.3;
+}
+
+// ====== 绘图事件 ======
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  
+  const pos = getCanvasPos(e);
+  
+  if (currentState === STATE.DISPLAYED) {
+    // 答案展示中，开始收集手势
+    isDrawing = true;
+    isGestureDetection = true;
+    gesturePoints = [{ x: pos.x, y: pos.y }];
+    
+    // 也在画布上画出来（让用户看到自己在画圈）
+    lastX = pos.x;
+    lastY = pos.y;
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    return;
+  }
+  
+  if (currentState === STATE.FADING || currentState === STATE.OCR || currentState === STATE.ANSWERING) {
+    // 处理中，忽略输入
+    return;
+  }
+  
+  isDrawing = true;
+  isGestureDetection = false;
+  lastX = pos.x;
+  lastY = pos.y;
+  
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  
+  // 清除之前的空闲定时器
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  e.preventDefault();
+  if (!isDrawing) return;
+  
+  const pos = getCanvasPos(e);
+  
+  if (isGestureDetection) {
+    gesturePoints.push({ x: pos.x, y: pos.y });
+    // 也画出轨迹
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    return;
+  }
+  
+  ctx.lineTo(pos.x, pos.y);
+  ctx.stroke();
+  lastX = pos.x;
+  lastY = pos.y;
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  if (!isDrawing) return;
+  isDrawing = false;
+  
+  if (isGestureDetection) {
+    isGestureDetection = false;
+    // 检测是否为清除手势
+    if (detectClearGesture(gesturePoints)) {
+      clearCanvas();
+      answerEl.classList.remove('show');
+      answerEl.textContent = '';
+      setState(STATE.WRITING);
+    } else {
+      // 不是清除手势，但已经画上去了？就当普通书写处理
+      setState(STATE.WRITING);
+      startIdleTimer();
+    }
+    gesturePoints = [];
+    return;
+  }
+  
+  // 普通书写结束，启动空闲计时器
+  startIdleTimer();
+});
+
+// ====== 空闲定时器 ======
+function startIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    idleTimer = null;
+    if (currentState === STATE.WRITING) {
+      triggerMagic();
+    }
+  }, IDLE_DELAY);
+}
+
+// ====== 魔法流程 ======
+function triggerMagic() {
+  setState(STATE.FADING);
+  
+  // 保存当前笔迹
+  const snapshot = saveCanvasSnapshot();
+  
+  // 淡出动画
+  showFadeAnimation();
+  
+  // 延迟启动OCR（等淡出动画走一会儿）
+  setTimeout(() => {
+    setState(STATE.OCR);
+    runOCR(snapshot);
+  }, 600);
+}
+
+// ====== 将笔迹快照转为 OCR 可用的图片（反转 + 缩放） ======
+function snapshotToOcrImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = function() {
+      const MAX_W = 800;
+      let sw, sh;
+      if (img.width > MAX_W) {
+        const ratio = MAX_W / img.width;
+        sw = MAX_W;
+        sh = Math.round(img.height * ratio);
+      } else {
+        sw = img.width;
+        sh = img.height;
+      }
+      
+      const src = document.createElement('canvas');
+      src.width = img.width;
+      src.height = img.height;
+      const sctx = src.getContext('2d');
+      sctx.drawImage(img, 0, 0);
+      
+      // 读取并反转像素
+      const imageData = sctx.getImageData(0, 0, img.width, img.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const a = data[i + 3];
+        if (a < 128) {
+          data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = 255;
+        } else {
+          data[i] = 255 - data[i];
+          data[i+1] = 255 - data[i+1];
+          data[i+2] = 255 - data[i+2];
+          data[i+3] = 255;
+        }
+      }
+      sctx.putImageData(imageData, 0, 0);
+      
+      const temp = document.createElement('canvas');
+      temp.width = sw;
+      temp.height = sh;
+      const tctx = temp.getContext('2d');
+      tctx.drawImage(src, 0, 0, sw, sh);
+      
+      const b64 = temp.toDataURL('image/png').split(',')[1];
+      console.log(`OCR 图片: ${sw}x${sh}, base64: ${(b64.length/1024).toFixed(1)}KB`);
+      resolve(b64);
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+// ====== OCR（带自动重试，API Key 在服务端） ======
+async function runOCR(imageDataUrl) {
+  const snapshotDataUrl = imageDataUrl;
+  const base64 = await snapshotToOcrImage(snapshotDataUrl);
+  
+  const MAX_RETRIES = 5;
+  const RETRY_DELAYS = [5000, 15000, 30000, 60000, 120000];
+  
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      updateStatus(`OCR识别中 🔍 (${attempt > 0 ? '第' + attempt + '次重试' : ''})`);
+      
+      const ctrl = new AbortController();
+      const t2 = setTimeout(() => ctrl.abort(), 20000);
+      const r = await fetch('/ocr-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ image: base64 }),
+        signal: ctrl.signal
+      });
+      clearTimeout(t2);
+      
+      const j = await r.json();
+      const errCode = j.error_code;
+      const errMsg = j.error_msg || '';
+      
+      if (errCode) {
+        console.warn(`OCR 错误 [${errCode}]: ${errMsg}`);
+        if ([18, 19, 100, 282004, 282005, 282006].includes(errCode)) {
+          if (attempt < MAX_RETRIES) {
+            const delay = RETRY_DELAYS[attempt] || 60000;
+            updateStatus(`⏳ 请求频繁，${Math.round(delay/1000)}秒后重试...`);
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+        }
+        showOcrFail(`OCR 错误: ${errMsg || errCode}`);
+        return;
+      }
+      
+      if (j.words_result && j.words_result.length > 0) {
+        const text = j.words_result.map(w => w.words).join('');
+        if (text.length >= 2) {
+          updateStatus(`识别: 「${text.slice(0, 30)}${text.length > 30 ? '...' : ''}」  |  ${APP_VERSION}`);
+          setState(STATE.ANSWERING);
+          await callDeepSeek(text, snapshotDataUrl);
+          return;
+        }
+      }
+      
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 3000));
+        updateStatus(`⏳ 未识别到文字，3秒后重试...`);
+      } else {
+        showOcrFail('多次尝试未能识别字迹，请写得更工整一些');
+      }
+    } catch (e) {
+      console.warn(`OCR 第${attempt + 1}次失败:`, e);
+      if (attempt < MAX_RETRIES) {
+        const delay = RETRY_DELAYS[attempt] || 30000;
+        updateStatus(`⏳ 网络错误，${Math.round(delay/1000)}秒后重试...`);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        showOcrFail('网络连接失败，请检查网络后重试');
+      }
+    }
+  }
+}
+
+function showOcrFail(msg) {
+  answerEl.textContent = '';
+  answerEl.classList.add('show');
+  typeWriter('◇ ' + msg);
+  setState(STATE.DISPLAYED);
+}
+
+// ====== DeepSeek API 流式调用 ======
+async function callDeepSeek(question, snapshotUrl) {
+  const historyData = { question, snapshotUrl, answer: '', time: new Date().toISOString() };
+  
+  // ====== 带重试的 API 请求 ======
+  const MAX_RETRY = 3;
+  const RETRY_WAIT = [5000, 15000, 30000];
+  let response = null;
+  
+  for (let attempt = 0; attempt <= MAX_RETRY; attempt++) {
+    try {
+      if (attempt > 0) updateStatus(`⏳ 大模型重试中 (${attempt}/${MAX_RETRY})  |  ${APP_VERSION}`);
+      
+      response = await fetch('/deepseek-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'DeepSeek-R1-0528-Qwen3-8B',
+          messages: [
+            { role: 'system', content: '你是一本来自霍格沃茨的魔法笔记本，以古老神秘的口吻回答问题。用词简洁如咒语，一语中的。不要展示思考过程，不要解释推理，不要啰嗦。问题简单就只给答案，像魔法书上的批注一样精炼而神秘。比如问1+1，只答「答案：二」。问北京在哪，只答「燕京之地，华夏之北」。用魔法世界的气息包裹每一个回答。' },
+            { role: 'user', content: question }
+          ],
+          stream: true,
+          max_tokens: 512
+        })
+      });
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        if (response.status === 429 && attempt < MAX_RETRY) {
+          const wait = RETRY_WAIT[attempt] || 15000;
+          updateStatus(`⏳ 请求频繁，${Math.round(wait/1000)}秒后重试...  |  ${APP_VERSION}`);
+          await new Promise(r => setTimeout(r, wait));
+          continue;
+        }
+        answerEl.textContent = '';
+        answerEl.classList.add('show');
+        typeWriter(`△ 魔法失效\n（API 错误: ${response.status}）`);
+        setState(STATE.DISPLAYED);
+        return;
+      }
+      break; // 成功
+    } catch (err) {
+      console.error('API 请求失败:', err);
+      if (attempt < MAX_RETRY) {
+        const wait = RETRY_WAIT[attempt] || 10000;
+        updateStatus(`⏳ 网络错误，${Math.round(wait/1000)}秒后重试...  |  ${APP_VERSION}`);
+        await new Promise(r => setTimeout(r, wait));
+      } else {
+        answerEl.textContent = '';
+        answerEl.classList.add('show');
+        typeWriter('△ 魔力中断 ... 请检查网络连接');
+        setState(STATE.DISPLAYED);
+        return;
+      }
+    }
+  }
+  
+  if (!response) return;
+  
+  // ====== 流式读取 + 打字机效果 ======
+  answerEl.textContent = '';
+  answerEl.classList.add('show');
+  
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let typedChars = 0;
+  let pendingChars = '';
+  let isTyping = false;
+  
+  function typewriterTick() {
+    if (pendingChars.length === 0) { isTyping = false; return; }
+    isTyping = true;
+    const ch = pendingChars[0];
+    pendingChars = pendingChars.slice(1);
+    answerEl.textContent += ch;
+    typedChars++;
+    const delay = /[。！？，、：；.!?,:;]/.test(ch) ? 60 : 20;
+    setTimeout(typewriterTick, delay);
+  }
+  
+  function feedToTypewriter(text) {
+    pendingChars += text;
+    if (!isTyping) typewriterTick();
+  }
+  
+  function stripThinking(raw) {
+    let cleaned = raw;
+    cleaned = cleaned.replace(/[\s\S]*? 回答\n*/g, '');
+    cleaned = cleaned.replace(/<[Tt]hink>[\s\S]*?<\/[Tt]hink>/g, '');
+    return cleaned.replace(/^\n+/, '').trim();
+  }
+  
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+      
+      for (const line of lines) {
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') break;
+        
+        try {
+          const json = JSON.parse(data);
+          const content = json.choices?.[0]?.delta?.content || '';
+          if (!content) continue;
+          
+          buffer += content;
+          const markerIdx = buffer.indexOf(' 回答');
+          if (markerIdx !== -1) {
+            let showing = buffer.slice(markerIdx + 3).replace(/^\n+/, '');
+            if (showing.length > typedChars) {
+              feedToTypewriter(showing.slice(typedChars));
+            }
+          }
+        } catch (e) { /* ignore parse errors */ }
+      }
+    }
+    
+    let finalAnswer = stripThinking(buffer);
+    if (finalAnswer) {
+      if (finalAnswer.length > typedChars) feedToTypewriter(finalAnswer.slice(typedChars));
+    } else {
+      const lastNewline = buffer.lastIndexOf('\n');
+      if (lastNewline > 0) {
+        finalAnswer = buffer.slice(lastNewline).trim();
+        if (finalAnswer && finalAnswer.length > typedChars) feedToTypewriter(finalAnswer.slice(typedChars));
+      }
+    }
+    
+    // 提交历史记录（用完整的 finalAnswer，不是 DOM 中的部分文字）
+    if (historyData.question && finalAnswer) {
+      historyData.answer = finalAnswer;
+      try {
+        await fetch('/api/history', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(historyData)
+        });
+      } catch(e) {}
+    }
+    setState(STATE.DISPLAYED);
+    
+  } catch (err) {
+    console.error('流式读取错误:', err);
+    answerEl.textContent = '';
+    answerEl.classList.add('show');
+    typeWriter('△ 魔力中断 ... 请检查网络连接');
+    setState(STATE.DISPLAYED);
+  }
+}
+
+// ====== 打字机效果 ======
+function typeWriter(text) {
+  answerEl.textContent = '';
+  let i = 0;
+  
+  function type() {
+    if (i < text.length) {
+      answerEl.textContent += text[i];
+      i++;
+      const delay = text[i-1]?.match(/[\u3000-\u9fff,.?!，。？！、；：]/) ? 60 : 30;
+      setTimeout(type, delay);
+    }
+  }
+  
+  type();
+}
+
+function typeWriterFast(text) {
+  answerEl.textContent = text;
+}
+
+function typeWriterDirect(text) {
+  answerEl.textContent = text;
+}
+
+// ====== 百度 OCR 已就绪（无需初始化） ======
+updateStatus('等待书写 ✏️');
+console.log('🪄 魔法笔记本 ' + APP_VERSION + ' 已加载，等待你的笔迹...');
+
+// ====== 等待字体加载 → 开场动画 ======
+const loadingScreen = document.getElementById('loading-screen');
+const welcomeEl = document.getElementById('welcome');
+
+function startWelcome() {
+  loadingScreen.classList.add('hidden');
+  setTimeout(() => { loadingScreen.style.display = 'none'; }, 600);
+  
+  // 开场动画
+  const wl1 = document.getElementById('wl1');
+  const wl2 = document.getElementById('wl2');
+  const wl3 = document.getElementById('wl3');
+  const lines = [
+    { el: wl1, text: '📓', isEmoji: true },
+    { el: wl2, text: '你打开了一个魔法笔记本' },
+    { el: wl3, text: '用笔✏️或☝️写下你的想法' }
+  ];
+  
+  let lineIdx = 0;
+  const typeLine = () => {
+    if (lineIdx >= lines.length) {
+      setTimeout(() => {
+        let flashes = 0;
+        const flash = setInterval(() => {
+          welcomeEl.style.opacity = flashes % 2 === 0 ? '0' : '1';
+          flashes++;
+          if (flashes >= 4) {
+            clearInterval(flash);
+            welcomeEl.style.opacity = '0';
+            welcomeEl.classList.add('hidden');
+            welcomeEl.style.display = 'none';
+          }
+        }, 200);
+      }, 3000);
+      return;
+    }
+    const { el, text, isEmoji } = lines[lineIdx];
+    el.classList.add('visible');
+    if (isEmoji) {
+      el.style.fontSize = 'clamp(60px, 15vw, 120px)';
+      el.textContent = text;
+      lineIdx++;
+      setTimeout(typeLine, 400);
+      return;
+    }
+    let i = 0;
+    const type = () => {
+      if (i < text.length) {
+        el.textContent += text[i];
+        i++;
+        const delay = /[。！？，、：；.!?,:;]/.test(text[i-1]) ? 60 : 30;
+        setTimeout(type, delay);
+      } else {
+        lineIdx++;
+        setTimeout(typeLine, 400);
+      }
+    };
+    type();
+  };
+  typeLine();
+}
+
+// 检测字体加载
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => {
+    setTimeout(startWelcome, 300);
+  });
+} else {
+  setTimeout(startWelcome, 500);
+}
+
+// 点击魔法棒跳过等待，直接进入开场
+loadingScreen.style.cursor = 'pointer';
+loadingScreen.addEventListener('click', () => {
+  if (!loadingScreen.classList.contains('hidden')) {
+    startWelcome();
+  }
+});
+
+// ====== 阻止 iPad 手势干扰 ======
+document.addEventListener('touchmove', (e) => {
+  if (e.target === canvas) e.preventDefault();
+}, { passive: false });
+
+// ====== 键盘快捷键（调试用） ======
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'c' || e.key === 'C') {
+    // C 键：清屏
+    clearCanvas();
+    answerEl.classList.remove('show');
+    answerEl.textContent = '';
+    setState(STATE.WRITING);
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+  }
+});
+
+console.log('🪄 魔法笔记本已加载');
+console.log('📝 在屏幕上写字 → 停笔后字迹消失 → 答案浮现');
+console.log('🔄 画逆时针圆圈清空，进入下一题');
+console.log('⌨️ 按 C 键可手动清屏（调试用）');
+</script>
+</body>
+</html>
