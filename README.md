@@ -4,7 +4,9 @@
 
 在屏幕上用手指或笔写下问题 → 手写自动识别 → 大模型以魔法口吻回答 → 手写字体逐字浮现。
 
-[![点击观看演示视频](https://via.placeholder.com/720x405/0a0a0a/ffffff?text=🪄+点击播放演示视频)](https://raw.githubusercontent.com/mmcxujie-cpu/magic-notebook/main/demo.mp4)
+https://raw.githubusercontent.com/mmcxujie-cpu/magic-notebook/main/demo.mp4
+
+点击 ▶️ 观看演示视频
 
 ## ✨ 功能
 
