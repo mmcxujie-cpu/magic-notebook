@@ -4,6 +4,8 @@
 
 在屏幕上用手指或笔写下问题 → 手写自动识别 → 大模型以魔法口吻回答 → 手写字体逐字浮现。
 
+<video src="demo.mp4" controls width="100%" style="max-width:720px;border-radius:12px;margin:20px 0;"></video>
+
 ## ✨ 功能
 
 - ✏️ 手写输入（支持 iPad Apple Pencil 和手指）
