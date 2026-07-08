@@ -1,10 +1,14 @@
+[🇨🇳 中文](README.md) | [🇬🇧 English](README.en.md)
+
+---
+
 # 🪄 魔法笔记本
 
 一个模仿《哈利波特》魔法笔记本的交互网页应用。
 
 在屏幕上用手指或笔写下问题 → 手写自动识别 → 大模型以魔法口吻回答 → 手写字体逐字浮现。
 
-[![演示视频](demo-thumb.jpg)](demo.mp4)
+<video src="demo.mp4" controls width="100%" style="max-width:720px;border-radius:12px;margin:20px 0;"></video>
 
 ## ✨ 功能
 
