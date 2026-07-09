@@ -12,8 +12,6 @@
 https://github.com/user-attachments/assets/e10bc0e2-7072-4200-b404-2648187c14a1
 
 
-[![演示视频](demo-thumb.jpg)](demo.mp4)
-
 ## ✨ 功能
 
 - ✏️ 手写输入（支持 iPad Apple Pencil 和手指）
