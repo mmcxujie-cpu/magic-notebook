@@ -8,7 +8,11 @@ An interactive web app that mimics the magical notebook from *Harry Potter*.
 
 Write your question on the screen with your finger or stylus → handwriting is recognized by OCR → AI answers in a magical tone → answer appears character by character in a handwritten font.
 
-[![Watch the demo](demo-thumb.jpg)](demo.mp4)
+
+
+https://github.com/user-attachments/assets/229dac5d-0bbd-4d92-bddd-419bff7917ba
+
+
 
 ## ✨ Features
 
