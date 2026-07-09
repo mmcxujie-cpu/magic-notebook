@@ -8,6 +8,10 @@
 
 在屏幕上用手指或笔写下问题 → 手写自动识别 → 大模型以魔法口吻回答 → 手写字体逐字浮现。
 
+
+https://github.com/user-attachments/assets/e10bc0e2-7072-4200-b404-2648187c14a1
+
+
 [![演示视频](demo-thumb.jpg)](demo.mp4)
 
 ## ✨ 功能
